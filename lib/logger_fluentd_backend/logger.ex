@@ -71,21 +71,13 @@ defmodule LoggerFluentdBackend.Logger do
   end
 
   defp log_event(level, msg, _ts, md, %{tag: tag} = state) do
-    f =
-      case md[:function] do
-        {f, a} -> "#{f}/#{a}"
-        _ -> ""
-      end
-
-    data = %{
-      pid: inspect(md[:pid]),
-      module: inspect(md[:module]),
-      function: f,
-      line: inspect(md[:module]),
-      level: to_string(level),
-      message: to_string(msg),
-      payload: md[:payload]
-    }
+    data = md
+      |> Enum.map(fn
+        {k,v} when not is_bitstring(v) -> {k,v |> inspect}
+        {k,v}  -> {k,v}
+      end) |> Map.new
+      |> Map.put(:level, to_string(level))
+      |> Map.put(:message, to_string(msg))
 
     LoggerFluentdBackend.Sender.send(
       tag,
